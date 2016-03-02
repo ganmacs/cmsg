@@ -35,6 +35,9 @@ var flags = []cli.Flag{
 		Name:  "I",
 		Usage: "ignore repositories.",
 	},
+	cli.BoolFlag{
+		Name:  "no-merges",
+		Usage: "Do not print commits with more than one parent.",
 	},
 }
 

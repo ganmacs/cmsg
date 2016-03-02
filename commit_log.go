@@ -30,9 +30,15 @@ func toOneline(body string) string {
 	return strings.TrimSuffix(s, "|")
 }
 
-func CommitLogs(repo *Repository) chan *CommitLog {
+func CommitLogs(repo *Repository, noMerge bool) chan *CommitLog {
 	ch := make(chan *CommitLog)
-	cmd := exec.Command("git", "log", "--pretty=format:["+repo.Name+"] <%an> %B%x07")
+	var cmd *exec.Cmd
+	if noMerge {
+		cmd = exec.Command("git", "log", "--pretty=format:["+repo.Name+"] <%an> %B%x07", "--no-merges")
+	} else {
+		cmd = exec.Command("git", "log", "--pretty=format:["+repo.Name+"] <%an> %B%x07")
+	}
+
 	cmd.Dir = repo.Path
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -45,7 +51,6 @@ func CommitLogs(repo *Repository) chan *CommitLog {
 		defer cmd.Wait()
 		scanner := bufio.NewScanner(stdout)
 		scanner.Split(scanCommitLog)
-
 		for scanner.Scan() {
 			body := scanner.Text()
 			ch <- &CommitLog{body: body}

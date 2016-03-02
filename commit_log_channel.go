@@ -10,6 +10,7 @@ import (
 type CommitLogChannel struct {
 	SearchPatterns []string
 	IgnorePatterns []string
+	noMerges       bool
 	in             chan *Repository
 	Out            chan *CommitLog
 	limit          chan bool
@@ -19,17 +20,11 @@ func NewCommitLogChannel(c *cli.Context, input *RepositoryChannel) *CommitLogCha
 	return &CommitLogChannel{
 		SearchPatterns: append(c.StringSlice("s"), GitConfigs("cmsg.searchCommits")...),
 		IgnorePatterns: append(c.StringSlice("i"), GitConfigs("cmsg.ignoreCommits")...),
+		noMerges:       c.Bool("no-merges"),
 		in:             input.Out,
 		Out:            make(CChan, c.Int("j")),
 		limit:          make(chan bool, c.Int("j")),
 	}
-}
-
-func noMerge(nm bool) string {
-	if nm {
-		return "--no-merges"
-	}
-	return ""
 }
 
 func (ch *CommitLogChannel) Start() *CommitLogChannel {
@@ -53,14 +48,13 @@ func (ch *CommitLogChannel) commits() CChan {
 			ch.limit <- true
 
 			go func(r *Repository) {
-				for clog := range CommitLogs(r) {
+				for clog := range CommitLogs(r, ch.noMerges) {
 					ret <- clog
 				}
 				wg.Done()
 				<-ch.limit
 			}(repo)
 		}
-
 		wg.Wait()
 		close(ret)
 	}()
